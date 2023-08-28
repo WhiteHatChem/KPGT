@@ -1,5 +1,9 @@
 import torch
 import numpy as np
+import gc
+from tqdm import tqdm
+import objgraph
+
 class Trainer():
     def __init__(self, args, optimizer, lr_scheduler, loss_fn, evaluator, result_tracker, summary_writer, device, model_name, label_mean=None, label_std=None, ddp=False, local_rank=0):
         self.args = args
@@ -62,7 +66,7 @@ class Trainer():
                 if epoch - best_epoch >= 20:
                     break
         return best_train_result, best_val_result, best_test_result
-    def eval(self, model, dataloader):
+    def eval(self, model, dataloader,training_set_name=None):
         model.eval()
         predictions_all = []
         labels_all = []
@@ -71,7 +75,37 @@ class Trainer():
             predictions, labels = self._forward_epoch(model, batched_data)
             predictions_all.append(predictions.detach().cpu())
             labels_all.append(labels.detach().cpu())
-        result = self.evaluator.eval(torch.cat(labels_all), torch.cat(predictions_all))
+        result = self.evaluator.eval(torch.cat(labels_all), torch.cat(predictions_all),training_set_name=training_set_name)
         return result
 
-    
+    def predict(self, model, train_dataset):
+        with torch.no_grad():
+            model.eval()
+            with open(self.args.dataset_type+".csv", 'a') as f:
+                for idx in tqdm(range(self.args.offset,len(train_dataset))):
+
+
+
+                    (smiles, g, ecfp, md, labels) = train_dataset[idx]
+                    # ecfp = ecfp.to(self.device)
+                    # md = md.to(self.device)
+                    # g = g.to(self.device)
+
+                    #write predictions to csv
+                    
+                    prediction =  model.forward_tune(g, ecfp, md)
+                    f.write(f'{smiles},{",".join([str(x) for x in prediction[0].numpy().tolist()])}\n')
+
+
+                #   print(predictions)
+                    
+                    # with open(self.args.dataset_type+".csv", 'a') as f:
+                    #     for i in range(len(predictions)):
+                    #         f.write(smiles[i]+","+str(predictions[i][0])+"\n")
+
+
+                    # torch.cuda.empty_cache()
+                    
+                    # gc.collect()
+
+                #   print(objgraph.show_most_common_types())

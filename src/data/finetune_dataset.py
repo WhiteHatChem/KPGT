@@ -6,18 +6,21 @@ from dgl.data.utils import load_graphs
 import torch
 import dgl.backend as F
 import scipy.sparse as sps
+import objgraph
+
 
 SPLIT_TO_ID = {'train':0, 'val':1, 'test':2}
 class MoleculeDataset(Dataset):
     def __init__(self, root_path, dataset, dataset_type, path_length=5, n_virtual_nodes=2, split_name=None, split=None):
         dataset_path = os.path.join(root_path, f"{dataset}/{dataset}.csv")
         self.cache_path = os.path.join(root_path, f"{dataset}/{dataset}_{path_length}.pkl")
-        split_path = os.path.join(root_path, f"{dataset}/splits/{split_name}.npy")
+        
         ecfp_path = os.path.join(root_path, f"{dataset}/rdkfp1-7_512.npz")
         md_path = os.path.join(root_path, f"{dataset}/molecular_descriptors.npz")
         # Load Data
         df = pd.read_csv(dataset_path)
         if split is not None:
+            split_path = os.path.join(root_path, f"{dataset}/splits/{split_name}.npy")
             use_idxs = np.load(split_path, allow_pickle=True)[SPLIT_TO_ID[split]]
         else: 
             use_idxs = np.arange(0, len(df))

@@ -292,21 +292,24 @@ class LiGhTPredictor(nn.Module):
         return self.node_predictor(triplet_h[g.ndata['mask']>=1]), self.fp_predictor(triplet_h[indicators==1]), self.md_predictor(triplet_h[indicators==2])
 
     def forward_tune(self, g, fp, md):
+
         indicators = g.ndata['vavn'] # 0 indicates normal atoms and nodes (triplets); -1 indicates virutal atoms; >=1 indicate virtual nodes 
-        # Input
+     #   Input
         node_h = self.node_emb(g.ndata['begin_end'], indicators)          
         edge_h = self.edge_emb(g.ndata['edge'], indicators)
         triplet_h = self.triplet_emb(node_h, edge_h, fp, md, indicators)
+
+     
         # Model
         triplet_h = self.model(g, triplet_h)
         g.ndata['ht'] = triplet_h
         # Readout
         fp_vn = triplet_h[indicators==1]
         md_vn = triplet_h[indicators==2]
-        g.remove_nodes(np.where(indicators.detach().cpu().numpy()>=1)[0])
+        g.remove_nodes(np.where(indicators.numpy()>=1)[0])
         readout = dgl.readout_nodes(g, 'ht', op=self.readout_mode)
         g_feats = torch.cat([fp_vn, md_vn, readout],dim=-1)
-        #Predict
+    #    Predict
         return self.predictor(g_feats)
 
     def generate_fps(self, g, fp, md):
