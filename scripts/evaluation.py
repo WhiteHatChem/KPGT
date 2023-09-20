@@ -44,7 +44,6 @@ def parse_args():
     parser.add_argument("--dataset_type", type=str, required=True)
     parser.add_argument("--metric", type=str, required=True)
     parser.add_argument("--split", type=str, required=True)
-
     parser.add_argument("--n_threads", type=int, default=1)
     args = parser.parse_args()
     return args
@@ -72,6 +71,7 @@ def finetune(args):
     g.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     collator = Collator_tune(config['path_length'])
+  #  print(args.dataset)
     train_dataset = MoleculeDataset(root_path=args.data_path, dataset = args.dataset, dataset_type=args.dataset_type, split_name=f'{args.split}', split='train')
     val_dataset = MoleculeDataset(root_path=args.data_path, dataset = args.dataset, dataset_type=args.dataset_type, split_name=f'{args.split}', split='val')
     test_dataset = MoleculeDataset(root_path=args.data_path, dataset = args.dataset, dataset_type=args.dataset_type, split_name=f'{args.split}', split='test')
@@ -101,7 +101,7 @@ def finetune(args):
     del model.md_predictor
     del model.fp_predictor
     del model.node_predictor
-    print("model have {}M paramerters in total".format(sum(x.numel() for x in model.parameters())/1e6))
+  #  print("model have {}M paramerters in total".format(sum(x.numel() for x in model.parameters())/1e6))
     optimizer, lr_scheduler, loss_fn, summary_writer = None, None, None, None
 
     if args.dataset_type == 'classification':
@@ -110,14 +110,17 @@ def finetune(args):
         evaluator = Evaluator(args.dataset, args.metric, train_dataset.n_tasks, mean=train_dataset.mean.numpy(), std=train_dataset.std.numpy())
     result_tracker = Result_Tracker(args.metric)
     trainer = Trainer(args, optimizer, lr_scheduler, loss_fn, evaluator, result_tracker, summary_writer, device=device,model_name='LiGhT', label_mean=train_dataset.mean.to(device) if train_dataset.mean is not None else None, label_std=train_dataset.std.to(device) if train_dataset.std is not None else None)
-    print("Train")
+    print('{"Train":',end="")
     best_train = trainer.eval(model, train_loader,training_set_name="train")
-    print("Val")
+    print(',"Val":',end='')
     best_val = trainer.eval(model, val_loader,training_set_name="val")
-    print("Test")
+    print(',"Test":',end='')
     best_test = trainer.eval(model, test_loader,training_set_name="test")
-  #  print(f"train: {best_train:.3f}, val: {best_val:.3f}, test: {best_test:.3f}")
+    print("}")
+
+   # print(f"train: {best_train:.3f}, val: {best_val:.3f}, test: {best_test:.3f}")
 if __name__ == '__main__':
     args = parse_args()
+
     set_random_seed(args.seed)
     finetune(args)

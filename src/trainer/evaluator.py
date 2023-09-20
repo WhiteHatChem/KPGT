@@ -82,6 +82,7 @@ class Evaluator:
         '''
 
         rocauc_list = []
+        print('[',end="")
 
         for i in range(y_true.shape[1]):
             #AUC is only defined when there is at least one positive data.
@@ -92,76 +93,83 @@ class Evaluator:
                 # compute AUC with roc_curve
                 fpr, tpr, _ = roc_curve(y_true[is_labeled,i], y_pred[is_labeled,i])
                 rocauc_list.append(auc(fpr, tpr))
+                print('{"roc_auc":',auc(fpr, tpr),end=',')
 
-                # plot distribution of y_pred with color given by y_true
-                fig,ax=plt.subplots(figsize=(10,10))
 
-                plt.scatter(np.arange(len(y_pred[is_labeled,i])), y_pred[is_labeled,i], c=y_true[is_labeled,i], label=['0','1']
-                            
-                             )
 
-                ax.tick_params(axis="y",direction="in", pad=-22)
-                ax.tick_params(axis="x",direction="in", pad=-15)
-               #  fig.tight_layout()
+            #     # plot distribution of y_pred with color given by y_true
+            #     fig,ax=plt.subplots(figsize=(10,10))
+
+            #     plt.scatter(np.arange(len(y_pred[is_labeled,i])), y_pred[is_labeled,i], c=y_true[is_labeled,i], label=['0','1']
+            #                  )
+
+            #     ax.tick_params(axis="y",direction="in", pad=-22)
+            #     ax.tick_params(axis="x",direction="in", pad=-15)
+            #    #  fig.tight_layout()
                 
-                task=settings[self.name]['output_names'][i]
+            #     task=settings[self.name]['output_names'][i]
 
-                #get x_scale and y_scale from automaticaly fitted plot
-                x_scale=fig.axes[0].get_xlim()
-                y_scale=fig.axes[0].get_ylim()
+            #     #get x_scale and y_scale from automaticaly fitted plot
+            #     x_scale=fig.axes[0].get_xlim()
+            #     y_scale=fig.axes[0].get_ylim()
                 
-                #add axis labels
-                # plt.xlabel('sample')
-                # plt.ylabel('prediction')
+            #     #add axis labels
+            #     # plt.xlabel('sample')
+            #     # plt.ylabel('prediction')
 
-                plt.margins(x=0,y=0)
-
-
-                img_path=f'/home/zach/whc_backend/web/greens/static/distribs/{self.name}_{task}_{training_set_name}.jpg'
-                fig.savefig(img_path)
-                plt.close(fig)
-                metadata=piexif.load(img_path)
-
-                metadata['Exif'][piexif.ExifIFD.UserComment]=json.dumps(
-                    {
-                        "x_scale":x_scale,
-                        "y_scale":y_scale,
-                        "type":"classification",
-                        "roc_auc":float(rocauc_list[-1]),
-                #        "unit":None
-                    }
-                ).encode()
-
-                
-                
-              # 
-                piexif.insert(piexif.dump(metadata), img_path)
+            #     plt.margins(x=0,y=0)
 
 
+            #     img_path=f'/home/zach/whc_backend/web/greens/static/distribs/{self.name}_{task}_{training_set_name}.jpg'
+            #     fig.savefig(img_path)
+            #     plt.close(fig)
+            #     metadata=piexif.load(img_path)
 
+            #     metadata['Exif'][piexif.ExifIFD.UserComment]=json.dumps(
+            #         {
+            #             "x_scale":x_scale,
+            #             "y_scale":y_scale,
+            #             "type":"classification",
+            #             "roc_auc":float(rocauc_list[-1]),
+            #     #        "unit":None
+            #         }
+            #     ).encode()
 
                 
                 
-
+            #   # 
+            #     piexif.insert(piexif.dump(metadata), img_path)
 
                 
 
-                #get boundary for best f1 score
-                # thresholds= np.linspace( np.min(y_pred[is_labeled,i]), np.max(y_pred[is_labeled,i]), 1000)
-                # f1_list = []
-                # for threshold in thresholds:
-                #     y_pred_tmp = np.zeros_like(y_pred[:,i])
-                #     y_pred_tmp[y_pred[:,i] > threshold] = 1
-                #     f1_list.append(f1_score(y_true[:,i], y_pred_tmp))
+            #    get boundary for best f1 score
+                thresholds= np.linspace( np.min(y_pred[is_labeled,i]), np.max(y_pred[is_labeled,i]), 1000)
+                f1_list = []
+                for threshold in thresholds:
+                    y_pred_tmp = np.zeros_like(y_pred[:,i])
+                    y_pred_tmp[y_pred[:,i] > threshold] = 1
+                    # fix NaN, infinity or a value too large for dtype('float32')
+                    y_pred_tmp = np.nan_to_num(y_pred_tmp)
+                    y_true=np.nan_to_num(y_true)
+                    f1_list.append(f1_score(y_true[:,i], y_pred_tmp))
                 
                 
 
                 
 
-                # best_f1 = np.argmax(f1_list)
-                # print('best f1 threshold: ', thresholds[best_f1], 'f1 score', f1_list[best_f1])
+                best_f1 = np.argmax(f1_list)
+                print('"threshold":',thresholds[best_f1],end='}')
+                if i<y_true.shape[1]-1:
+                    print(',',end="")
 
-                
+                # print('best f1 threshold: ', thresholds[best_f1])
+            
+            else:
+                print('null',end="")
+                if i<y_true.shape[1]-1:
+                    print(',',end="")
+
+        print(']')    
 
 
 
@@ -248,57 +256,57 @@ class Evaluator:
             else:
                 rmse_list.append(np.sqrt(((y_true[is_labeled,i] - y_pred[is_labeled,i])**2).mean()))
             # plot distribution (y_true vs y_pred)
-            plt.figure()
+            # plt.figure()
 
-            fig,ax =plt.subplots(
-                figsize=(10,10),
-            )
+            # fig,ax =plt.subplots(
+            #     figsize=(10,10),
+            # )
 
-            plt.scatter(y_true[is_labeled,i], y_pred[is_labeled,i], alpha=0.5,label=['true','pred'])
+            # plt.scatter(y_true[is_labeled,i], y_pred[is_labeled,i], alpha=0.5,label=['true','pred'])
 
-            #  fig.tight_layout()
-            plt.margins(x=0,y=0)
-            task=settings[self.name]['output_names'][i]
+            # #  fig.tight_layout()
+            # plt.margins(x=0,y=0)
+            # task=settings[self.name]['output_names'][i]
 
 
-            x_scale=fig.axes[0].get_xlim()
-            y_scale=fig.axes[0].get_ylim()
+            # x_scale=fig.axes[0].get_xlim()
+            # y_scale=fig.axes[0].get_ylim()
 
-            #get x_scale and y_scale from automaticaly fitted plot
+            # #get x_scale and y_scale from automaticaly fitted plot
 
-            ax.tick_params(axis="y",direction="in", pad=-22)
-            ax.tick_params(axis="x",direction="in", pad=-15)
+            # ax.tick_params(axis="y",direction="in", pad=-22)
+            # ax.tick_params(axis="x",direction="in", pad=-15)
         
-            # #add axis labels
-            # plt.xlabel(f'{task} true')
-            # plt.ylabel(f'{task} pred')
+            # # #add axis labels
+            # # plt.xlabel(f'{task} true')
+            # # plt.ylabel(f'{task} pred')
 
-            # plt.title(f'{task} true vs pred')
-
-
-            img_path=f'/home/zach/whc_backend/web/greens/static/distribs/{self.name}_{task}_{training_set_name}.jpg'
-            fig.savefig(img_path)
-            plt.close(fig)
-            metadata=piexif.load(img_path)
-
-            metadata['Exif'][piexif.ExifIFD.UserComment]=json.dumps(
-                {
-                    "x_scale":x_scale,
-                    "y_scale":y_scale,
-                    "type":"regression",
-                    "rmse":float(rmse_list[-1]),
-                    "unit":settings[self.name]['units'],
+            # # plt.title(f'{task} true vs pred')
 
 
+            # img_path=f'/home/zach/whc_backend/web/greens/static/distribs/{self.name}_{task}_{training_set_name}.jpg'
+            # fig.savefig(img_path)
+            # plt.close(fig)
+            # metadata=piexif.load(img_path)
 
-                }
-            ).encode()
+            # metadata['Exif'][piexif.ExifIFD.UserComment]=json.dumps(
+            #     {
+            #         "x_scale":x_scale,
+            #         "y_scale":y_scale,
+            #         "type":"regression",
+            #         "rmse":float(rmse_list[-1]),
+            #         "unit":settings[self.name]['units'],
+
+
+
+            #     }
+            # ).encode()
 
 
 
             
-            # 
-            piexif.insert(piexif.dump(metadata), img_path)
+            # # 
+            # piexif.insert(piexif.dump(metadata), img_path)
 
 
         return sum(rmse_list)/len(rmse_list)
